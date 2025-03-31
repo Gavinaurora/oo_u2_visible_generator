@@ -24,24 +24,24 @@
   ],
 
   "FUNC_LIST": [
-    "chaos_gen",
-    "time_little_dif_gen",
-    "time_large_dif_gen",
-    "mono_lift_std_burst_gen",
-    "mono_lift_mono_from_burst_gen",
-    "mono_lift_mono_to_burst_gen",
-    "chaos_burst_gen",
-    "mono_lift_thorough_burst_gen"
+    "chaos_no_sche",
+    "time_little_dif_no_sche",
+    "time_large_dif_no_sche",
+    "time_large_dif_burst_no_sche",
+    "mono_from_burst_sche",
+    "mono_to_burst_no_sche",
+    "chaos_burst_no_sche",
+    "thorough_burst_no_sche"
   ],
   "FUNC_DESCRIPTION": [
-    "彻底随机的少量数据生成策略,拥抱混沌吧！(默认生成量4~6条)",
-    "生成时间缓慢增加的少量随机数据生成策略。(默认生成量4~6条)",
-    "生成时间迅速增加的少量随机数据生成策略。(默认生成量4~6条)",
-    "一台电梯的大量随机数据生成策略。(默认生成量20条,一台电梯仅会尝试一次mono策略)",
-    "一台电梯的大量从同一楼层出发的数据生成策略。(默认生成量20条,一台电梯仅会尝试一次mono策略)",
-    "一台电梯的大量目标在同一楼层的数据生成策略。(默认生成量20条,一台电梯仅会尝试一次mono策略)",
-    "彻底随机的大量数据生成策略,拥抱混沌吧！(默认生成量20条)",
-    "一台电梯的大量的尽量跨越更多楼层的数据的生成策略。(默认生成量20条,一台电梯仅会尝试一次mono策略)"
+    "彻底随机的少量数据生成策略,拥抱混沌吧！(默认生成量4~6条,无sche)",
+    "生成时间缓慢增加的少量随机数据生成策略。(默认生成量4~6条,无sche)",
+    "生成时间快速增加的少量随机数据生成策略。(默认生成量4~6条,无sche)",
+    "生成时间快速增加的大量随机数据生成策略。(默认生成量4~6条,无sche)",
+    "大量从同一楼层出发的数据生成策略。(默认生成量20条,无sche)",
+    "大量目标在同一楼层的数据生成策略。(默认生成量20条,无sche)",
+    "彻底随机的大量数据生成策略,拥抱混沌吧！(默认生成量20条,无sche)",
+    "大量的尽量跨越更多楼层的数据的生成策略。(默认生成量20条,无sche)"
   ],
 
   "STD_LEN": 5,
