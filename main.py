@@ -1,175 +1,269 @@
 import json
 import tkinter as tk
-
+from typing import Dict, List, Any
 import rng
 
-rng.__init__()
-rng.mono_lift_mono_from_burst_gen()
 
-parameter = json.load(open('config.json', 'r', encoding="utf-8"))
+class GUIApplication:
+    def __init__(self, config_path: str = "config.json"):
+        # 初始化配置和运行时数据
+        self.config: Dict[str, Any] = self._load_config(config_path)
+        self.running_time: float = 1.0
+        self.ui_components: Dict[str, Any] = {}
+        self.current_functions: List[str] = []
+        self.function_queue: List[int] = []
 
-window = tk.Tk()
-window.title("OO U2 数据生成器 by Gavinaurora")
-window.iconbitmap("the_d6.ico")
-window.geometry("1000x750")
-window.resizable(False, False)
+        # GUI初始化
+        self.root = self._create_root_window()
+        self._create_menu()
+        self._create_side_panel()
+        self._create_function_list()
+        self._create_output_elements()
+        self._create_status_bar()
 
-func_list = parameter['FUNC_LIST']
-func_description = parameter['FUNC_DESCRIPTION']
+        # 初始化RNG模块
+        rng.__init__()
 
-help_info = tk.StringVar()
-help_info.set("你好，欢迎使用我的可视化数据生成器！")
-help_info_label = tk.Label(window, textvariable=help_info, width=85, height=2,
-                           bg='white', fg='black', font=('Arial', 12), anchor='w')
-help_info_label.place(x=0, y=690)
+    def _load_config(self, config_path: str) -> Dict[str, Any]:
+        """加载配置文件"""
+        with open(config_path, "r", encoding="utf-8") as f:
+            return json.load(f)
 
-now_func_list = []
-chosenFuncVar = tk.StringVar()
-chosenFunc = tk.Label(window, bg='white', fg='black', font=('Arial', 12), width=30, textvariable=chosenFuncVar,
-                      justify='left')
-chosenFunc.place(x=700, y=0)
+    def _create_root_window(self) -> tk.Tk:
+        """创建主窗口"""
+        root = tk.Tk()
+        root.title("OO U2 数据生成器 by Gavinaurora")
+        root.iconbitmap("the_d6.ico")
+        root.geometry("1000x750")
+        root.resizable(False, False)
+        return root
 
-req = []
-file_name = "file1.txt"
+    def _create_side_panel(self):
+        """创建左侧控制面板"""
+        control_buttons = [
+            ("加入选定策略", self._add_selected_function),
+            ("移除最后的策略", self._remove_last_function),
+            ("移除所有的策略", self._clear_all_functions),
+            ("显示所选策略介绍", self._show_selected_info),
+            ("重置数据生成器", self._reset_system)
+        ]
 
+        for idx, (text, command) in enumerate(control_buttons):
+            btn = tk.Button(
+                self.root,
+                text=text,
+                width=15,
+                height=2,
+                command=command
+            )
+            btn.place(x=0, y=idx * 30, height=30, width=130)
 
-def clear_txt():
-    with open(file_name, "w") as f:
-        pass
+    def _create_function_list(self):
+        """创建功能列表区域"""
+        self.ui_components["function_list"] = tk.Listbox(self.root)
+        for idx, func in enumerate(self.config["FUNC_LIST"]):
+            self.ui_components["function_list"].insert(idx, func)
+        self.ui_components["function_list"].place(x=200, y=0, width=200, height=300)
+        # 显示已选功能的区域
+        self.ui_components["selected_func_var"] = tk.StringVar()
+        label = tk.Label(
+            self.root,
+            bg="white",
+            fg="black",
+            font=("Arial", 12),
+            width=30,
+            textvariable=self.ui_components["selected_func_var"],
+            justify="left"
+        )
+        label.place(x=700, y=0)
 
+    def _create_output_elements(self):
+        """创建输出相关的界面元素"""
+        # 日志输出区域
+        self.ui_components["output_text"] = tk.Text(
+            self.root,
+            wrap=tk.WORD,
+            font=("Arial", 12)
+        )
+        self.ui_components["output_text"].place(x=0, y=310, height=260, width=400)
+        # 生成时间控制区域
+        time_control_frame = tk.Frame(self.root)
+        time_control_frame.place(x=0, y=580)
+        # 时间调节滑块
+        self.ui_components["time_scale"] = tk.Scale(
+            time_control_frame,
+            label="下一条指令的时间",
+            from_=0,
+            to=100,
+            orient=tk.HORIZONTAL,
+            length=400,
+            showvalue=False,
+            tickinterval=5,
+            resolution=0.1,
+            command=self._update_time
+        )
+        self.ui_components["time_scale"].grid(row=0, column=0)
+        # 时间显示标签
+        self.ui_components["time_display"] = tk.Label(
+            time_control_frame,
+            bg="white",
+            fg="black",
+            width=10,
+            text=f"{self.running_time}s"
+        )
+        self.ui_components["time_display"].grid(row=0, column=1)
+        # 生成按钮
+        generate_btn = tk.Button(
+            self.root,
+            text="生成数据",
+            width=15,
+            height=2,
+            command=self._generate_data
+        )
+        generate_btn.place(x=870, y=700, height=30, width=130)
 
-def print_func_queue():
-    value = ""
-    for i in now_func_list:
-        value += i
-        value += "\n"
-    chosenFuncVar.set(value)
+    def _create_menu(self):
+        """创建菜单系统"""
+        menu_bar = tk.Menu(self.root)
+        # 文件菜单
+        file_menu = tk.Menu(menu_bar, tearoff=0)
+        file_menu.add_command(label="退出", command=self.root.quit)
+        menu_bar.add_cascade(label="文件", menu=file_menu)
+        # 设置菜单
+        setting_menu = tk.Menu(menu_bar, tearoff=0)
+        setting_menu.add_command(label="参数设置", command=self._show_settings)
+        menu_bar.add_cascade(label="设置", menu=setting_menu)
+        self.root.config(menu=menu_bar)
 
+    def _create_status_bar(self):
+        """创建状态栏"""
+        self.ui_components["status_var"] = tk.StringVar()
+        self.ui_components["status_var"].set("你好，欢迎使用我的可视化数据生成器！")
 
-def add_func():
-    try:
-        now_func_list.append(lb.get(lb.curselection()))
-    except tk.TclError:
-        help_info.set("ERROR! 似乎你并没有选择一种可以加入的策略。")
-        return
-    else:
-        pos = func_list.index(lb.get(lb.curselection()))
-        if len(req) < 20:
-            help_info.set(func_description[pos])
+        status_label = tk.Label(
+            self.root,
+            textvariable=self.ui_components["status_var"],
+            width=85,
+            height=2,
+            bg="white",
+            fg="black",
+            font=("Arial", 12),
+            anchor="w"
+        )
+        status_label.place(x=0, y=690)
+
+    def _update_selected_display(self):
+        """更新已选功能显示"""
+        display_text = "\n".join(self.current_functions)
+        self.ui_components["selected_func_var"].set(display_text)
+
+    def _add_selected_function(self):
+        """添加选中的功能到队列"""
+        try:
+            selection = self.ui_components["function_list"].get(
+                self.ui_components["function_list"].curselection())
+        except tk.TclError:
+            self.ui_components["status_var"].set("ERROR! 未选择任何策略")
+            return
+        # 获取配置信息
+        func_index = self.config["FUNC_LIST"].index(selection)
+        max_queue_length = 20
+        # 更新状态信息
+        if len(self.function_queue) >= max_queue_length:
+            self.ui_components["status_var"].set("WARNING! 队列已达安全容量")
         else:
-            help_info.set("WARNING! 你选择生成的数据太多了(但可以正常生成)。")
-        req.append(pos)
-        print_func_queue()
+            self.ui_components["status_var"].set(
+                self.config["FUNC_DESCRIPTION"][func_index])
+        # 添加到队列
+        self.current_functions.append(selection)
+        self.function_queue.append(func_index)
+        self._update_selected_display()
+
+    def _remove_last_function(self):
+        """移除最后添加的功能"""
+        if not self.function_queue:
+            self.ui_components["status_var"].set("ERROR! 队列已空")
+            return
+        self.function_queue.pop()
+        self.current_functions.pop()
+        self._update_selected_display()
+        self.ui_components["status_var"].set("已移除最后添加的策略")
+
+    def _clear_all_functions(self):
+        """清空所有选中功能"""
+        self.function_queue.clear()
+        self.current_functions.clear()
+        self._update_selected_display()
+        self.ui_components["status_var"].set("已清空全部策略队列")
+
+    def _show_selected_info(self):
+        """显示当前选中功能的详细信息"""
+        try:
+            selection = self.ui_components["function_list"].get(
+                self.ui_components["function_list"].curselection())
+        except tk.TclError:
+            self.ui_components["status_var"].set("WARNING! 未选择有效策略")
+            return
+        func_index = self.config["FUNC_LIST"].index(selection)
+        self.ui_components["status_var"].set(
+            self.config["FUNC_DESCRIPTION"][func_index])
+
+    def _generate_data(self):
+        """执行数据生成操作"""
+        output_file = "file1.txt"
+
+        if not self.function_queue:
+            self.ui_components["status_var"].set("WARNING! 空队列无法生成数据")
+            return
+        # 清空并写入文件
+        with open(output_file, "w", encoding="utf-8") as f:
+            f.write("")  # 清空文件内容
+        # 调用RNG模块生成数据
+        rng.fin_gen(self.function_queue)
+        # 更新界面状态
+        self.ui_components["status_var"].set("数据生成成功！")
+        self.ui_components["time_display"].config(
+            text=f"{round(rng.time, 1)}s")
+        self.ui_components["time_scale"].set(rng.time)
+        # 加载生成结果到文本框
+        self.ui_components["output_text"].delete("1.0", tk.END)
+        with open(output_file, "r", encoding="utf-8") as f:
+            self.ui_components["output_text"].insert(tk.END, f.read())
+
+    def _reset_system(self):
+        """执行系统重置操作"""
+        output_file = "file1.txt"
+
+        # 清空文件内容
+        with open(output_file, "w", encoding="utf-8") as f:
+            f.write("")
+        # 重置界面状态
+        self.ui_components["output_text"].delete("1.0", tk.END)
+        self.function_queue.clear()
+        self.current_functions.clear()
+        self._update_selected_display()
+        self.ui_components["time_display"].config(text="1.0s")
+        self.ui_components["time_scale"].set(1.0)
+
+        # 重新初始化RNG模块
+        rng.__init__()
+        self.ui_components["status_var"].set("系统已重置")
+
+    def _update_time(self, value: str):
+        """更新时间参数"""
+        self.running_time = float(value)
+        self.ui_components["time_display"].config(
+            text=f"{self.running_time}s")
+        rng.time = self.running_time
+
+    def _show_settings(self):
+        """显示参数设置窗口"""
+        settings_window = tk.Toplevel(self.root)
+        settings_window.title("参数设置")
+        settings_window.geometry("800x620")
+        settings_window.grab_set()
 
 
-def del_func():
-    if len(req) == 0:
-        help_info.set("ERROR! 队列里已经没有策略可以删除。")
-    else:
-        req.pop(len(req) - 1)
-        now_func_list.pop(len(now_func_list) - 1)
-        print_func_queue()
-        help_info.set("成功移除了一组策略。")
-
-
-def del_all_func():
-    req.clear()
-    now_func_list.clear()
-    print_func_queue()
-    help_info.set("成功移除了所有策略。")
-
-
-def get_func_info():
-    try:
-        lb.get(lb.curselection())
-    except tk.TclError:
-        help_info.set("WARNING! 无法展示一个不存在的策略的信息。")
-        return
-    else:
-        pos = func_list.index(lb.get(lb.curselection()))
-        help_info.set(func_description[pos])
-
-
-def gen():
-    if len(req) == 0:
-        help_info.set("WARNING! 你没有选择任何策略,生成数据的请求已经被终止")
-        return
-    clear_txt()
-    rng.fin_gen(req)
-    help_info.set("生成数据成功！")
-    string = str(round(rng.time, 1)) + 's'
-    time_output.config(text=string)
-    with open(file_name, "r", encoding="utf-8") as f:
-        file_content = f.read()
-        text_output.insert(tk.END, file_content)
-
-
-def reset():
-    clear_txt()
-    text_output.delete('1.0', tk.END)
-    req.clear()
-    now_func_list.clear()
-    print_func_queue()
-    time_output.config(text='1.0' + 's')
-    time_scale.set(1.0)
-    rng.__init__()
-    help_info.set("重置了数据生成器。")
-
-
-def arg_window_gen():
-    arg_window = tk.Tk()
-    arg_window.geometry("800x620")
-
-
-def print_selection(v):
-    time_output.config(text=v + 's')
-    rng.time = float(v)
-
-
-if 1 == 1:
-    button_add_func = tk.Button(window, text='加入选定策略', width=15, height=2, command=add_func)
-    button_add_func.place(x=0, y=0, height=30, width=130)
-
-    button_del_func = tk.Button(window, text='移除最后的策略', width=15, height=2, command=del_func)
-    button_del_func.place(x=0, y=30, height=30, width=130)
-
-    button_del_func = tk.Button(window, text='移除所有的策略', width=15, height=2, command=del_all_func)
-    button_del_func.place(x=0, y=60, height=30, width=130)
-
-    button_get_info = tk.Button(window, text='显示所选策略的介绍', width=15, height=2, command=get_func_info)
-    button_get_info.place(x=0, y=90, height=30, width=130)
-
-    button_reset = tk.Button(window, text="重置数据生成器", width=15, height=2, command=reset)
-    button_reset.place(x=0, y=120, height=30, width=130)
-
-    button_gen = tk.Button(window, text="生成数据", width=15, height=2, command=gen)
-    button_gen.place(x=870, y=700, height=30, width=130)
-
-    text_output = tk.Text(window, wrap=tk.WORD, font=("Arial", 12))
-    text_output.place(x=0, y=310, height=260, width=400)
-
-    lb = tk.Listbox(window)
-    for func in func_list:
-        lb.insert(lb.size(), func)
-    lb.place(x=200, y=0, width=200, height=300)
-
-    time_scale = tk.Scale(window, label='下一条指令的时间', from_=0, to=100, orient=tk.HORIZONTAL, length=400,
-                          showvalue=False, tickinterval=5, resolution=0.1, command=print_selection)
-    time_scale.place(x=0, y=580)
-    time_output = tk.Label(window, bg="white", fg='black', width=10, text=str(round(rng.time, 1)) + "s")
-    time_output.place(x=130, y=580)
-
-if 2 == 2:
-    menu = tk.Menu(window)
-    window.config(menu=menu)
-
-    file_menu = tk.Menu(menu, tearoff=0)
-    menu.add_cascade(label="文件", menu=file_menu)
-    file_menu.add_command(label="退出", command=window.quit)
-
-    arg_menu = tk.Menu(menu, tearoff=0)
-    menu.add_cascade(label="设置", menu=arg_menu)
-    arg_menu.add_command(label="参数设置", command=arg_window_gen)
-
-clear_txt()
-tk.mainloop()
+if __name__ == "__main__":
+    app = GUIApplication()
+    tk.mainloop()
