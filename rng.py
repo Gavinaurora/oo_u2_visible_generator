@@ -197,9 +197,11 @@ def std_sche_gen():
                 to_floor = random.choice(sche_floor_name)
                 sche_id = random.choice(lift_id_pool)
                 speed = random.choice(speed_pool)
-                if predicted_time[sche_id] > time + speed * len(to_floor):
+                if predicted_time[sche_id] > time:
                     continue
                 else:
+                    predicted_time[sche_id] = time + speed * len(floor_name) + 2.0
+                    print(predicted_time)
                     atomic_sche_gen(sche_id, speed, to_floor)
                     flag = True
                     break
@@ -229,9 +231,10 @@ def restricted_sche_gen():
             for _ in range(chance_max):
                 speed = random.choice(speed_pool)
                 to_floor = random.choice(sche_floor_name)
-                if predicted_time[sche_id] > time + speed * len(to_floor):
+                if predicted_time[sche_id] > time:
                     continue
                 else:
+                    predicted_time[sche_id] = time + speed * len(floor_name) + 2.0
                     atomic_sche_gen(sche_id, speed, to_floor)
                     flag = True
                     break
@@ -268,3 +271,5 @@ def fin_gen(req):
             thorough_burst_gen()
         elif i == 8:
             std_sche_gen()
+        elif i == 9:
+            restricted_sche_gen()

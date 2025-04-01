@@ -20,6 +20,8 @@ class GUIApplication:
         self._create_function_list()
         self._create_output_elements()
         self._create_status_bar()
+        with open("stdout.txt", "w") as file:
+            pass
 
         # 初始化RNG模块
         rng.__init__()
@@ -32,7 +34,7 @@ class GUIApplication:
     def _create_root_window(self) -> tk.Tk:
         """创建主窗口"""
         root = tk.Tk()
-        root.title("OO U2 数据生成器 by Gavinaurora")
+        root.title("OO U2 数据生成器 hw6版本 by Gavinaurora")
         root.iconbitmap("the_d6.ico")
         root.geometry("1000x750")
         root.resizable(False, False)
@@ -113,14 +115,22 @@ class GUIApplication:
         )
         self.ui_components["time_display"].grid(row=0, column=1)
         # 生成按钮
-        generate_btn = tk.Button(
+        generate_single_btn = tk.Button(
             self.root,
-            text="生成数据",
+            text="生成单条数据",
             width=15,
             height=2,
             command=self._generate_data
         )
-        generate_btn.place(x=870, y=700, height=30, width=130)
+        generate_single_btn.place(x=870, y=670, height=30, width=130)
+        generate_multi_btn = tk.Button(
+            self.root,
+            text="生成多条数据",
+            width=15,
+            height=2,
+            command=None
+        )
+        generate_multi_btn.place(x=870, y=700, height=30, width=130)
 
     def _create_menu(self):
         """创建菜单系统"""
@@ -170,7 +180,7 @@ class GUIApplication:
         max_queue_length = 20
         # 更新状态信息
         if len(self.function_queue) >= max_queue_length:
-            self.ui_components["status_var"].set("WARNING! 队列已达安全容量")
+            self.ui_components["status_var"].set("WARNING! 队列已达安全容，但是可以正常生成")
         else:
             self.ui_components["status_var"].set(
                 self.config["FUNC_DESCRIPTION"][func_index])
@@ -202,33 +212,34 @@ class GUIApplication:
             selection = self.ui_components["function_list"].get(
                 self.ui_components["function_list"].curselection())
         except tk.TclError:
-            self.ui_components["status_var"].set("WARNING! 未选择有效策略")
+            self.ui_components["status_var"].set("WARNING! 未选择有效策略队列")
             return
         func_index = self.config["FUNC_LIST"].index(selection)
         self.ui_components["status_var"].set(
             self.config["FUNC_DESCRIPTION"][func_index])
 
-    def _generate_data(self):
+    def _generate_data(self, output_file="stdout.txt", out=True):
         """执行数据生成操作"""
-        output_file = "stdout.txt"
-
         if not self.function_queue:
             self.ui_components["status_var"].set("WARNING! 空队列无法生成数据")
             return
-        # 清空并写入文件
-        with open(output_file, "w", encoding="utf-8") as f:
-            f.write("")  # 清空文件内容
         # 调用RNG模块生成数据
         rng.fin_gen(self.function_queue)
-        # 更新界面状态
-        self.ui_components["status_var"].set("数据生成成功！")
-        self.ui_components["time_display"].config(
-            text=f"{round(rng.time, 1)}s")
-        self.ui_components["time_scale"].set(rng.time)
-        # 加载生成结果到文本框
-        self.ui_components["output_text"].delete("1.0", tk.END)
-        with open(output_file, "r", encoding="utf-8") as f:
-            self.ui_components["output_text"].insert(tk.END, f.read())
+        if out:
+            # 更新界面状态
+            self.ui_components["status_var"].set("数据生成成功！")
+            self.ui_components["time_display"].config(
+                text=f"{round(rng.time, 1)}s")
+            self.ui_components["time_scale"].set(rng.time)
+            # 加载生成结果到文本框
+            self.ui_components["output_text"].delete("1.0", tk.END)
+            with open(output_file, "r", encoding="utf-8") as f:
+                self.ui_components["output_text"].insert(tk.END, f.read())
+
+
+    def _generate_multi_data(self):
+        self.config[""]
+
 
     def _reset_system(self):
         """执行系统重置操作"""
@@ -247,7 +258,7 @@ class GUIApplication:
 
         # 重新初始化RNG模块
         rng.__init__()
-        self.ui_components["status_var"].set("系统已重置")
+        self.ui_components["status_var"].set("生成器已经重置完成。")
 
     def _update_time(self, value: str):
         """更新时间参数"""
