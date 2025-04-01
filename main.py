@@ -210,7 +210,7 @@ class GUIApplication:
 
     def _generate_data(self):
         """执行数据生成操作"""
-        output_file = "file1.txt"
+        output_file = "stdout.txt"
 
         if not self.function_queue:
             self.ui_components["status_var"].set("WARNING! 空队列无法生成数据")
@@ -232,7 +232,7 @@ class GUIApplication:
 
     def _reset_system(self):
         """执行系统重置操作"""
-        output_file = "file1.txt"
+        output_file = "stdout.txt"
 
         # 清空文件内容
         with open(output_file, "w", encoding="utf-8") as f:
