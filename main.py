@@ -1,7 +1,8 @@
 import json
 import tkinter as tk
 from typing import Dict, List, Any
-import rng
+import generator
+rng = generator.Generator()
 
 
 class GUIApplication:
@@ -229,17 +230,15 @@ class GUIApplication:
             # 更新界面状态
             self.ui_components["status_var"].set("数据生成成功！")
             self.ui_components["time_display"].config(
-                text=f"{round(rng.time, 1)}s")
-            self.ui_components["time_scale"].set(rng.time)
+                text=f"{round(generator.time, 1)}s")
+            self.ui_components["time_scale"].set(generator.time)
             # 加载生成结果到文本框
             self.ui_components["output_text"].delete("1.0", tk.END)
             with open(output_file, "r", encoding="utf-8") as f:
                 self.ui_components["output_text"].insert(tk.END, f.read())
 
-
     def _generate_multi_data(self):
         self.config[""]
-
 
     def _reset_system(self):
         """执行系统重置操作"""

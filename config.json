@@ -37,7 +37,7 @@
     "time_little_dif_no_sche",
     "time_large_dif_no_sche",
     "time_large_dif_burst_no_sche",
-    "mono_from_burst_sche",
+    "mono_from_burst_no_sche",
     "mono_to_burst_no_sche",
     "chaos_burst_no_sche",
     "thorough_burst_no_sche",
