@@ -3,6 +3,7 @@ import tkinter as tk
 from typing import Dict, List, Any
 import generator
 rng = generator.Generator()
+# pyinstaller -F G:\OO_U2_RNG\main.py -i G:\OO_U2_RNG\the_d6.ico -n oo_gen_v0.2.1
 
 
 class GUIApplication:
@@ -225,7 +226,7 @@ class GUIApplication:
             self.ui_components["status_var"].set("WARNING! 空队列无法生成数据")
             return
         # 调用RNG模块生成数据
-        rng.fin_gen(self.function_queue)
+        rng._fin_gen(self.function_queue)
         if out:
             # 更新界面状态
             self.ui_components["status_var"].set("数据生成成功！")

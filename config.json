@@ -42,7 +42,8 @@
     "chaos_burst_no_sche",
     "thorough_burst_no_sche",
     "std_with_sche",
-    "restricted_with_sche"
+    "restricted_with_sche",
+    "all_with_sche"
   ],
   "FUNC_DESCRIPTION": [
     "彻底随机的少量数据生成策略,拥抱混沌吧！\n(默认生成量4~6条,无sche)",
@@ -54,7 +55,8 @@
     "彻底随机的大量数据生成策略,拥抱混沌吧！\n(默认生成量20条,无sche)",
     "大量的尽量跨越更多楼层的数据的生成策略。\n(默认生成量20条,无sche)",
     "标准生成1条sche指令，夹在少量正常指令中间。\n(默认生成量4~6条,有sche,可能失败)",
-    "标准生成1条sche指令，使每台电梯最多1次产生sche，夹在少量正常指令中间。\n(默认生成量4~6条,有sche,可能失败)"
+    "标准生成1条sche指令，使每台电梯最多1次产生sche，夹在少量正常指令中间。\n(默认生成量4~6条,有sche,可能失败)",
+    "尽可能生成所有合法的sche指令\n(有sche,可能失败)"
   ],
   "MULTI_OUTPUT_PREFIX": "file_",
   "STD_LEN": 5,
