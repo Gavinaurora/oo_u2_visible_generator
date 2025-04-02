@@ -29,6 +29,7 @@ class Generator:
         self.burst_len = self.parameter['BURST_LEN']
         self.burst_range = self.parameter['BURST_RANGE']
         self.time_times = self.parameter['TIME_TIMES']
+        self.contents: list[str] = []
         # 打乱初始池
         random.shuffle(self.lift_id_pool)
         random.shuffle(self.sche_id_left_pool)
@@ -37,8 +38,7 @@ class Generator:
 
     def _write_to_file(self, content: str) -> None:
         """统一文件写入操作"""
-        with open(file_name, 'a') as f:
-            f.write(content)
+        self.contents.append(content)
 
     def _random_unique_floors(self) -> tuple[str, str]:
         """生成不重复的起始/目标楼层"""
@@ -59,7 +59,7 @@ class Generator:
         self._write_to_file(content)
 
     def _base_mono_gen(
-            self, add_time: bool = False, times: int = 1, burst_target: str = None
+            self, add_time: bool = False, times: int = 1, burst_target: str = None, vol: str = 'std'
     ) -> None:
         """
         通用生成乘客请求的基函数
@@ -68,7 +68,12 @@ class Generator:
         - burst_target: 指定爆发的楼层类型 ('from' 或 'to')
         """
         global time  # 需要修改全局时间时保留 global
-        _len = random.randint(self.std_len - self.std_range, self.std_len + self.std_range)
+        if vol == 'std':
+            _len = random.randint(self.std_len - self.std_range, self.std_len + self.std_range)
+        elif vol == 'burst':
+            _len = random.randint(self.burst_len - self.burst_range, self.burst_len + self.burst_range)
+        else:
+            _len = 5
         # 处理特定爆发场景
         fixed_floor = None
         if burst_target == 'from':
@@ -112,21 +117,19 @@ class Generator:
 
     def _time_large_dif_burst_gen(self) -> None:
         """爆发性大时间差生成"""
-        _len = random.randint(self.burst_len - self.burst_range, self.burst_len + self.burst_range)
-        for _ in range(_len):
-            self._base_mono_gen(add_time=True, times=self.time_times)
+        self._base_mono_gen(add_time=True, times=self.time_times, vol='burst')
 
     def _mono_from_burst_gen(self) -> None:
         """固定起始楼层爆发生成"""
-        self._base_mono_gen(burst_target='from')
+        self._base_mono_gen(burst_target='from', vol='burst')
 
     def _mono_to_burst_gen(self) -> None:
         """固定目标楼层爆发生成"""
-        self._base_mono_gen(burst_target='to')
+        self._base_mono_gen(burst_target='to', vol='burst')
 
     def _chaos_burst_gen(self) -> None:
         """随机爆发生成"""
-        self._base_mono_gen()
+        self._base_mono_gen(vol='burst')
 
     def _schedule_base(self, restricted: bool = False) -> None:
         """调度生成的基函数"""
@@ -204,7 +207,7 @@ class Generator:
                     self._atomic_sche_gen(selected_id, speed, to_floor)
                     break
 
-    def _fin_gen(self, req: list) -> None:
+    def fin_gen(self, req: list) -> None:
         """总控生成函数（保持原分派逻辑）"""
         for req_type in req:
             _method = {
@@ -221,3 +224,7 @@ class Generator:
                 10: self._all_restricted_sche_gen
             }[req_type]
             _method()
+        for content in self.contents:
+            with open(file_name, mode='a', encoding='utf-8') as f:
+                f.write(content)
+        self.contents.clear()

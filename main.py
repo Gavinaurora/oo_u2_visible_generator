@@ -1,9 +1,13 @@
 import json
 import tkinter as tk
+import os
 from typing import Dict, List, Any
 import generator
+
 rng = generator.Generator()
-# pyinstaller -F G:\OO_U2_RNG\main.py -i G:\OO_U2_RNG\the_d6.ico -n oo_gen_v0.2.1
+
+
+# pyinstaller -F G:\OO_U2_RNG\main.py -i G:\OO_U2_RNG\the_d6.ico -n oo_gen_v0.2.2
 
 
 class GUIApplication:
@@ -22,7 +26,7 @@ class GUIApplication:
         self._create_function_list()
         self._create_output_elements()
         self._create_status_bar()
-        with open("stdout.txt", "w") as file:
+        with open("stdout.txt", "w"):
             pass
 
         # 初始化RNG模块
@@ -130,7 +134,7 @@ class GUIApplication:
             text="生成多条数据",
             width=15,
             height=2,
-            command=None
+            command=self._generate_multi_data
         )
         generate_multi_btn.place(x=870, y=700, height=30, width=130)
 
@@ -226,7 +230,7 @@ class GUIApplication:
             self.ui_components["status_var"].set("WARNING! 空队列无法生成数据")
             return
         # 调用RNG模块生成数据
-        rng._fin_gen(self.function_queue)
+        rng.fin_gen(self.function_queue)
         if out:
             # 更新界面状态
             self.ui_components["status_var"].set("数据生成成功！")
@@ -239,15 +243,35 @@ class GUIApplication:
                 self.ui_components["output_text"].insert(tk.END, f.read())
 
     def _generate_multi_data(self):
-        self.config[""]
+        prefix: str = self.config["MULTI_OUTPUT_PREFIX"]
+        times: int = self.config["MULTI_OUTPUT_TIMES"]
+        saved_time: float = generator.time
+        for i in range(times):
+            rng.__init__()
+            with open(generator.file_name, "w", encoding="utf-8") as f:
+                f.write("")
+            generator.time = saved_time
+            name: str = 'out_files/' + prefix + str(i) + '.txt'
+            self._generate_data(out=False)
+            with open(generator.file_name, 'r', encoding='utf-8') as source:
+                with open(name, "w", encoding='utf-8') as target:
+                    for line in source:
+                        target.write(line)
+        self.ui_components["status_var"].set("多条数据生成完成。")
 
     def _reset_system(self):
         """执行系统重置操作"""
-        output_file = "stdout.txt"
-
         # 清空文件内容
-        with open(output_file, "w", encoding="utf-8") as f:
+        with open(generator.file_name, "w", encoding="utf-8") as f:
             f.write("")
+        folder_path = "./out_files"  # 替换为你的文件夹路径
+        # 遍历文件夹内文件并删除
+        for file_name in os.listdir(folder_path):
+            file_path = os.path.join(folder_path, file_name)
+            try:
+                os.remove(file_path)
+            except Exception as e:
+                print(f"删除失败 {file_path}: {str(e)}")
         # 重置界面状态
         self.ui_components["output_text"].delete("1.0", tk.END)
         self.function_queue.clear()

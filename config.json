@@ -59,6 +59,7 @@
     "尽可能生成所有合法的sche指令\n(有sche,可能失败)"
   ],
   "MULTI_OUTPUT_PREFIX": "file_",
+  "MULTI_OUTPUT_TIMES": 10,
   "STD_LEN": 5,
   "STD_RANGE": 1,
   "BURST_LEN": 20,
