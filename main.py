@@ -3,6 +3,7 @@ import tkinter as tk
 import os
 from typing import Dict, List, Any
 import generator
+import random
 
 rng = generator.Generator()
 
@@ -53,7 +54,8 @@ class GUIApplication:
             ("移除最后的策略", self._remove_last_function),
             ("移除所有的策略", self._clear_all_functions),
             ("显示所选策略介绍", self._show_selected_info),
-            ("重置数据生成器", self._reset_system)
+            ("重置数据生成器", self._reset_system),
+            ("获取某些特别信息", self._get_dialogue)
         ]
 
         for idx, (text, command) in enumerate(control_buttons):
@@ -224,6 +226,14 @@ class GUIApplication:
         self.ui_components["status_var"].set(
             self.config["FUNC_DESCRIPTION"][func_index])
 
+    def _get_dialogue(self):
+        """显示对话"""
+        if random.random() < 0.95:
+            string: str = random.choice(self.config['DIALOGUE'])
+        else:
+            string: str = random.choice(self.config['BONUS'])
+        self.ui_components["status_var"].set(string)
+
     def _generate_data(self, output_file="stdout.txt", out=True):
         """执行数据生成操作"""
         if not self.function_queue:
@@ -243,6 +253,9 @@ class GUIApplication:
                 self.ui_components["output_text"].insert(tk.END, f.read())
 
     def _generate_multi_data(self):
+        if not self.function_queue:
+            self.ui_components["status_var"].set("WARNING! 空队列无法生成数据")
+            return
         prefix: str = self.config["MULTI_OUTPUT_PREFIX"]
         times: int = self.config["MULTI_OUTPUT_TIMES"]
         saved_time: float = generator.time
@@ -257,7 +270,7 @@ class GUIApplication:
                 with open(name, "w", encoding='utf-8') as target:
                     for line in source:
                         target.write(line)
-        self.ui_components["status_var"].set("多条数据生成完成。")
+        self.ui_components["status_var"].set("多条数据生成完成。输出的文件在./outfiles文件中。")
 
     def _reset_system(self):
         """执行系统重置操作"""
@@ -289,7 +302,7 @@ class GUIApplication:
         self.running_time = float(value)
         self.ui_components["time_display"].config(
             text=f"{self.running_time}s")
-        rng.time = self.running_time
+        generator.time = self.running_time
 
     def _show_settings(self):
         """显示参数设置窗口"""
