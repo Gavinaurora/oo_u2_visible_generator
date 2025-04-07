@@ -8,7 +8,8 @@ import random
 rng = generator.Generator()
 
 
-# pyinstaller -F G:\OO_U2_RNG\main.py -i G:\OO_U2_RNG\the_d6.ico -n oo_gen_v0.2.2
+# created by Gavinaurora
+# pyinstaller -F G:\OO_U2_RNG\gui_app.py -i G:\OO_U2_RNG\the_d6.ico -n oo_gen_v0.3.0
 
 
 class GUIApplication:
@@ -33,11 +34,6 @@ class GUIApplication:
         # 初始化RNG模块
         rng.__init__()
 
-    def _load_config(self, config_path: str) -> Dict[str, Any]:
-        """加载配置文件"""
-        with open(config_path, "r", encoding="utf-8") as f:
-            return json.load(f)
-
     def _create_root_window(self) -> tk.Tk:
         """创建主窗口"""
         root = tk.Tk()
@@ -46,6 +42,11 @@ class GUIApplication:
         root.geometry("1000x750")
         root.resizable(False, False)
         return root
+
+    def _load_config(self, config_path: str) -> Dict[str, Any]:
+        """加载配置文件"""
+        with open(config_path, "r", encoding="utf-8") as f:
+            return json.load(f)
 
     def _create_side_panel(self):
         """创建左侧控制面板"""

@@ -1,9 +1,10 @@
 import json
 import random
 
-# 保持全局变量不动
 file_name: str = "stdout.txt"
 time: float = 0.0
+
+# created by Gavinaurora
 
 
 class Generator:
@@ -13,11 +14,12 @@ class Generator:
         # 初始化类属性（直接从 parameter 提取）
         self.pas_id = self.parameter['INIT_PAS_ID']
         self.lift_id_pool = self.parameter['LIFT_ID'].copy()
+        self.available_sche_id_pool = self.lift_id_pool.copy()
         self.floor_name = self.parameter['FLOOR_NAME'].copy()
         self.sche_floor_name = self.parameter['SCHE_NAME'].copy()
         self.speed_pool = self.parameter['SPEED'].copy()
         self.sche_id_left_pool = self.parameter['LIFT_ID'].copy()
-        self.predicted_time = {}
+        self.predicted_time = {int: float}
 
         # 设置全局初始时间
         global time
@@ -33,10 +35,12 @@ class Generator:
         # 打乱初始池
         random.shuffle(self.lift_id_pool)
         random.shuffle(self.sche_id_left_pool)
+        random.shuffle(self.available_sche_id_pool)
+        # sche 时间限制
         for lift_id in self.lift_id_pool:
             self.predicted_time[lift_id] = 0.0
 
-    def _write_to_file(self, content: str) -> None:
+    def _write_to_contents(self, content: str) -> None:
         """统一文件写入操作"""
         self.contents.append(content)
 
@@ -49,17 +53,18 @@ class Generator:
         return from_floor, to_floor
 
     def _atomic_mono_gen(self, pri: int, from_floor: str, to_floor: str) -> None:
-        global time  # 保留 global 声明以满足时间格式要求
+        global time
         content = f"[{round(time, 1):.1f}]{self.pas_id}-PRI-{pri}-FROM-{from_floor}-TO-{to_floor}\n"
-        self._write_to_file(content)
+        self._write_to_contents(content)
 
     def _atomic_sche_gen(self, lift_id: int, speed: float, to_floor: str) -> None:
-        global time  # 准确记录全局时间
+        global time
         content = f"[{time:.1f}]SCHE-{lift_id}-{speed:.1f}-{to_floor}\n"
-        self._write_to_file(content)
+        self._write_to_contents(content)
 
     def _base_mono_gen(
-            self, add_time: bool = False, times: int = 1, burst_target: str = None, vol: str = 'std'
+            self, add_time: bool = False, times: int = 1, burst_target: str = None, vol: str = 'std',
+            minimum_time_add=0
     ) -> None:
         """
         通用生成乘客请求的基函数
@@ -67,7 +72,8 @@ class Generator:
         - times: 时间增加的次数
         - burst_target: 指定爆发的楼层类型 ('from' 或 'to')
         """
-        global time  # 需要修改全局时间时保留 global
+        global time
+        fixed_time = time + minimum_time_add + 0.001
         if vol == 'std':
             _len = random.randint(self.std_len - self.std_range, self.std_len + self.std_range)
         elif vol == 'burst':
@@ -102,6 +108,8 @@ class Generator:
             if add_time:
                 for _ in range(times):
                     time += random.choice(self.time_dif)
+                if _ == _len and time < fixed_time:
+                    time = fixed_time
 
     def _chaos_gen(self) -> None:
         """基础随机生成"""
@@ -131,23 +139,30 @@ class Generator:
         """随机爆发生成"""
         self._base_mono_gen(vol='burst')
 
+    def _remove_updated_sche(self, remove: int) -> None:
+        """清除掉被更新的电梯的调度请求的合法性"""
+        self.sche_id_left_pool = filter(lambda i: i != remove, self.sche_id_left_pool)
+        self.available_sche_id_pool = filter(lambda i: i != remove, self.available_sche_id_pool)
+
     def _schedule_base(self, restricted: bool = False) -> None:
         """调度生成的基函数"""
         global time
+        if len(self.available_sche_id_pool) == 0:
+            return
         _len = random.randint(self.std_len - self.std_range, self.std_len + self.std_range)
         sche_pos = random.randint(1, _len - 2)
         chance_max = self.parameter['SCHE_SUMMON_CHANCE_MAX']
         # 处理是否使用受限调度
         sche_id = None
         if restricted:
-            sche_id = self.sche_id_left_pool.pop(0) if len(self.sche_id_left_pool) > 1 else None
+            sche_id = self.sche_id_left_pool.pop(0) if len(self.sche_id_left_pool) > 0 else None
         for i in range(_len):
             if i == sche_pos:
                 success = False
                 for _ in range(chance_max):
                     to_floor = random.choice(self.sche_floor_name)
                     speed = random.choice(self.speed_pool)
-                    selected_id = sche_id if restricted else random.choice(self.lift_id_pool)
+                    selected_id = sche_id if restricted else random.choice(self.available_sche_id_pool)
 
                     if selected_id is None:
                         continue
