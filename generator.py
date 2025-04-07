@@ -4,6 +4,7 @@ import random
 file_name: str = "stdout.txt"
 time: float = 0.0
 
+
 # created by Gavinaurora
 
 
@@ -19,11 +20,14 @@ class Generator:
         self.sche_floor_name = self.parameter['SCHE_NAME'].copy()
         self.speed_pool = self.parameter['SPEED'].copy()
         self.sche_id_left_pool = self.parameter['LIFT_ID'].copy()
-        self.predicted_time = {int: float}
+        self.earliest_sche_time: {int: float} = {}
+        self.exchange_floors = []
+        self.update_earliest_time = 0.0
 
         # 设置全局初始时间
         global time
         time = self.parameter['TIME']  # 初始化全局 time
+
         # 参数快捷访问（减少后续字典访问）
         self.std_len = self.parameter['STD_LEN']
         self.std_range = self.parameter['STD_RANGE']
@@ -38,7 +42,7 @@ class Generator:
         random.shuffle(self.available_sche_id_pool)
         # sche 时间限制
         for lift_id in self.lift_id_pool:
-            self.predicted_time[lift_id] = 0.0
+            self.earliest_sche_time[lift_id] = 0.0
 
     def _write_to_contents(self, content: str) -> None:
         """统一文件写入操作"""
@@ -57,14 +61,9 @@ class Generator:
         content = f"[{round(time, 1):.1f}]{self.pas_id}-PRI-{pri}-FROM-{from_floor}-TO-{to_floor}\n"
         self._write_to_contents(content)
 
-    def _atomic_sche_gen(self, lift_id: int, speed: float, to_floor: str) -> None:
-        global time
-        content = f"[{time:.1f}]SCHE-{lift_id}-{speed:.1f}-{to_floor}\n"
-        self._write_to_contents(content)
-
     def _base_mono_gen(
             self, add_time: bool = False, times: int = 1, burst_target: str = None, vol: str = 'std',
-            minimum_time_add=0
+            minimum_time_add: float = 0.0, chosen_floor: str = None
     ) -> None:
         """
         通用生成乘客请求的基函数
@@ -83,9 +82,15 @@ class Generator:
         # 处理特定爆发场景
         fixed_floor = None
         if burst_target == 'from':
-            fixed_floor = random.choice(self.floor_name)
+            if chosen_floor is None:
+                fixed_floor = random.choice(self.floor_name)
+            else:
+                fixed_floor = chosen_floor
         elif burst_target == 'to':
-            fixed_floor = random.choice(self.floor_name)
+            if chosen_floor is None:
+                fixed_floor = random.choice(self.floor_name)
+            else:
+                fixed_floor = chosen_floor
         for _ in range(_len):
             pri = random.randint(1, 100)
             if burst_target:
@@ -106,10 +111,10 @@ class Generator:
             self.pas_id += 1
             # 时间处理逻辑
             if add_time:
-                for _ in range(times):
+                for j in range(times):
                     time += random.choice(self.time_dif)
-                if _ == _len and time < fixed_time:
-                    time = fixed_time
+        if add_time and time < fixed_time:
+            time = fixed_time
 
     def _chaos_gen(self) -> None:
         """基础随机生成"""
@@ -139,49 +144,43 @@ class Generator:
         """随机爆发生成"""
         self._base_mono_gen(vol='burst')
 
-    def _remove_updated_sche(self, remove: int) -> None:
-        """清除掉被更新的电梯的调度请求的合法性"""
-        self.sche_id_left_pool = filter(lambda i: i != remove, self.sche_id_left_pool)
-        self.available_sche_id_pool = filter(lambda i: i != remove, self.available_sche_id_pool)
-
     def _schedule_base(self, restricted: bool = False) -> None:
         """调度生成的基函数"""
         global time
         if len(self.available_sche_id_pool) == 0:
             return
-        _len = random.randint(self.std_len - self.std_range, self.std_len + self.std_range)
-        sche_pos = random.randint(1, _len - 2)
         chance_max = self.parameter['SCHE_SUMMON_CHANCE_MAX']
         # 处理是否使用受限调度
         sche_id = None
         if restricted:
             sche_id = self.sche_id_left_pool.pop(0) if len(self.sche_id_left_pool) > 0 else None
-        for i in range(_len):
-            if i == sche_pos:
-                success = False
-                for _ in range(chance_max):
-                    to_floor = random.choice(self.sche_floor_name)
-                    speed = random.choice(self.speed_pool)
-                    selected_id = sche_id if restricted else random.choice(self.available_sche_id_pool)
 
-                    if selected_id is None:
-                        continue
-                    if self.predicted_time[selected_id] > time:
-                        continue
-                    else:
-                        self.predicted_time[selected_id] = time + speed * len(self.floor_name) + 2.0
-                        self._atomic_sche_gen(selected_id, speed, to_floor)
-                        success = True
-                        break
-                if success:
-                    continue
-                elif restricted:
-                    self.sche_id_left_pool.append(sche_id)
-            # 生成普通乘客请求
-            pri = random.randint(1, 100)
-            from_floor, to_floor = self._random_unique_floors()
-            self._atomic_mono_gen(pri, from_floor, to_floor)
-            self.pas_id += 1
+        success = False
+        for _ in range(chance_max):
+            to_floor = random.choice(self.sche_floor_name)
+            speed = random.choice(self.speed_pool)
+            selected_id = sche_id if restricted else random.choice(self.available_sche_id_pool)
+
+            if selected_id is None:
+                continue
+            if self.earliest_sche_time[selected_id] > time:
+                continue
+            else:
+                self.earliest_sche_time[selected_id] = time + speed * len(self.floor_name) + 2.0
+                self._atomic_sche_gen(selected_id, speed, to_floor)
+                success = True
+                break
+        if success:
+            self.update_earliest_time = time + 8.0
+            return
+        elif restricted:
+            self.sche_id_left_pool.append(sche_id)
+        print("不存在合法的sche请求！")
+
+    def _atomic_sche_gen(self, lift_id: int, speed: float, to_floor: str) -> None:
+        global time
+        content = f"[{time:.1f}]SCHE-{lift_id}-{speed:.1f}-{to_floor}\n"
+        self._write_to_contents(content)
 
     def _std_sche_gen(self) -> None:
         """标准调度生成"""
@@ -215,12 +214,84 @@ class Generator:
                 speed = random.choice(self.speed_pool)
                 if selected_id is None:
                     continue
-                if self.predicted_time[selected_id] > time:
+                if self.earliest_sche_time[selected_id] > time:
                     continue
                 else:
-                    self.predicted_time[selected_id] = time + speed * len(self.floor_name) + 2.0
+                    self.earliest_sche_time[selected_id] = time + speed * len(self.floor_name) + 2.0
                     self._atomic_sche_gen(selected_id, speed, to_floor)
                     break
+
+    def _void_time_diff(self):
+        """+8.0s"""
+        global time
+        time = time + 8.0
+
+    def _remove_updated_sche(self, remove: int) -> None:
+        """清除掉被更新的电梯的调度请求的合法性"""
+        self.sche_id_left_pool = list(filter(lambda i: i != remove, self.sche_id_left_pool))
+        self.available_sche_id_pool = list(filter(lambda i: i != remove, self.available_sche_id_pool))
+
+    def _time_guaranteed_dif_gen(self) -> None:
+        """至少时间差8s的大时间差生成"""
+        self._base_mono_gen(add_time=True, times=self.time_times, minimum_time_add=4.0)
+        self._base_mono_gen(add_time=True, times=self.time_times, minimum_time_add=4.0)
+
+    def _atomic_update_gen(self, upper_lift: int, lower_lift: int, to_floor: str) -> None:
+        """生成一条更新指令"""
+        global time
+        content = f"[{time:.1f}]UPDATE-{upper_lift}-{lower_lift}-{to_floor}\n"
+        self._write_to_contents(content)
+
+    def _update_base(self, exchange_floor: str, complete: bool = False) -> None:
+        """更新生成的基函数"""
+        if time < self.update_earliest_time:
+            print("时间不合法！")
+            return
+        elif len(self.available_sche_id_pool) < 2:
+            print("没有可用的update电梯！")
+            return
+        for key in self.earliest_sche_time.keys():
+            if self.earliest_sche_time[key] < time + 7.999:
+                self.earliest_sche_time[key] = time + 8.001
+        if complete:
+            while len(self.available_sche_id_pool) > 1:
+                upper_lift = self.available_sche_id_pool.pop(0)
+                lower_lift = self.available_sche_id_pool.pop(0)
+                self._remove_updated_sche(upper_lift)
+                self._remove_updated_sche(lower_lift)
+                self._atomic_update_gen(upper_lift, lower_lift, exchange_floor)
+        else:
+            upper_lift = self.available_sche_id_pool.pop(0)
+            lower_lift = self.available_sche_id_pool.pop(0)
+            self._remove_updated_sche(upper_lift)
+            self._remove_updated_sche(lower_lift)
+            self._atomic_update_gen(upper_lift, lower_lift, exchange_floor)
+
+    def _std_update_gen(self) -> None:
+        """标准生成1条更新"""
+        exchange_floor = random.choice(self.sche_floor_name)
+        self.exchange_floors.append(exchange_floor)
+        self._update_base(exchange_floor)
+
+    def _all_update_gen(self) -> None:
+        """生成所有可用更新"""
+        exchange_floor = random.choice(self.sche_floor_name)
+        self.exchange_floors.append(exchange_floor)
+        self._update_base(exchange_floor, True)
+
+    def _update_from_gen(self) -> None:
+        """固定有交换的起始楼层爆发生成"""
+        if len(self.exchange_floors) == 0:
+            return
+        chosen_floor = random.choice(self.exchange_floors)
+        self._base_mono_gen(burst_target='from', vol='burst', chosen_floor=chosen_floor)
+
+    def _update_to_gen(self) -> None:
+        """固定有交换的终点楼层爆发生成"""
+        if len(self.exchange_floors) == 0:
+            return
+        chosen_floor = random.choice(self.exchange_floors)
+        self._base_mono_gen(burst_target='to', vol='burst', chosen_floor=chosen_floor)
 
     def fin_gen(self, req: list) -> None:
         """总控生成函数（保持原分派逻辑）"""
@@ -236,7 +307,13 @@ class Generator:
                 7: self._thorough_burst_gen,
                 8: self._std_sche_gen,
                 9: self._restricted_sche_gen,
-                10: self._all_restricted_sche_gen
+                10: self._all_restricted_sche_gen,
+                11: self._time_guaranteed_dif_gen,
+                12: self._void_time_diff,
+                13: self._std_update_gen,
+                14: self._all_update_gen,
+                15: self._update_from_gen,
+                16: self._update_to_gen
             }[req_type]
             _method()
         for content in self.contents:

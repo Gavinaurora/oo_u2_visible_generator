@@ -37,7 +37,7 @@ class GUIApplication:
     def _create_root_window(self) -> tk.Tk:
         """创建主窗口"""
         root = tk.Tk()
-        root.title("OO U2 数据生成器 hw6版本 by Gavinaurora")
+        root.title("OO U2 数据生成器 hw7版本 v0.3.0 by Gavinaurora")
         root.iconbitmap("the_d6.ico")
         root.geometry("1000x750")
         root.resizable(False, False)
@@ -186,7 +186,7 @@ class GUIApplication:
             return
         # 获取配置信息
         func_index = self.config["FUNC_LIST"].index(selection)
-        max_queue_length = 20
+        max_queue_length = self.config["MAX_QUEUE_LENGTH"]
         # 更新状态信息
         if len(self.function_queue) >= max_queue_length:
             self.ui_components["status_var"].set("WARNING! 队列已达安全容，但是可以正常生成")
