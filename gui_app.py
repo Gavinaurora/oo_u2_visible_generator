@@ -9,7 +9,7 @@ rng = generator.Generator()
 
 
 # created by Gavinaurora
-# pyinstaller -F G:\OO_U2_RNG\gui_app.py -i G:\OO_U2_RNG\the_d6.ico -n oo_gen_v0.3.0
+# pyinstaller -F G:\OO_U2_RNG\gui_app.py -i G:\OO_U2_RNG\the_d6.ico -n oo_gen_v0.3.1
 
 
 class GUIApplication:
@@ -37,7 +37,7 @@ class GUIApplication:
     def _create_root_window(self) -> tk.Tk:
         """创建主窗口"""
         root = tk.Tk()
-        root.title("OO U2 数据生成器 hw7版本 v0.3.0 by Gavinaurora")
+        root.title("OO U2 数据生成器 hw7版本 v0.3.1 by Gavinaurora")
         root.iconbitmap("the_d6.ico")
         root.geometry("1000x750")
         root.resizable(False, False)

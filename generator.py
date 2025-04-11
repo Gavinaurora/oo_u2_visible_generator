@@ -22,7 +22,7 @@ class Generator:
         self.sche_id_left_pool = self.parameter['LIFT_ID'].copy()
         self.earliest_sche_time: {int: float} = {}
         self.exchange_floors = []
-        self.update_earliest_time = 0.0
+        self.earliest_update_time = {}
 
         # 设置全局初始时间
         global time
@@ -43,6 +43,7 @@ class Generator:
         # sche 时间限制
         for lift_id in self.lift_id_pool:
             self.earliest_sche_time[lift_id] = 0.0
+            self.earliest_update_time[lift_id] = 0.0
 
     def _write_to_contents(self, content: str) -> None:
         """统一文件写入操作"""
@@ -154,7 +155,7 @@ class Generator:
         sche_id = None
         if restricted:
             sche_id = self.sche_id_left_pool.pop(0) if len(self.sche_id_left_pool) > 0 else None
-
+        selected_id = 0
         success = False
         for _ in range(chance_max):
             to_floor = random.choice(self.sche_floor_name)
@@ -171,7 +172,7 @@ class Generator:
                 success = True
                 break
         if success:
-            self.update_earliest_time = time + 8.0
+            self.earliest_update_time[selected_id] = time + 8.0
             return
         elif restricted:
             self.sche_id_left_pool.append(sche_id)
@@ -218,6 +219,7 @@ class Generator:
                     continue
                 else:
                     self.earliest_sche_time[selected_id] = time + speed * len(self.floor_name) + 2.0
+                    self.earliest_update_time[selected_id] = time + 8.0
                     self._atomic_sche_gen(selected_id, speed, to_floor)
                     break
 
@@ -242,27 +244,54 @@ class Generator:
         content = f"[{time:.1f}]UPDATE-{upper_lift}-{lower_lift}-{to_floor}\n"
         self._write_to_contents(content)
 
+    def _upper_lower(self) -> (int, int):
+        global time
+        chance_max = self.parameter['SCHE_SUMMON_CHANCE_MAX']
+        j: int = 0
+        upper_lift: int = 0
+        lower_lift: int = 0
+        flag: bool = False
+        for i in range(chance_max):
+            j = random.randint(0, len(self.available_sche_id_pool) - 1)
+            upper_lift = self.available_sche_id_pool[j]
+            print(self.earliest_sche_time[upper_lift])
+            if self.earliest_sche_time[upper_lift] <= time:
+                flag = False
+                break
+            else:
+                flag = True
+        for i in range(chance_max):
+            k = random.randint(0, len(self.available_sche_id_pool) - 1)
+            lower_lift = self.available_sche_id_pool[k]
+            if j != k and self.earliest_sche_time[lower_lift] <= time:
+                flag = False
+                break
+            else:
+                flag = True
+        if flag:
+            print("无可用数据")
+            return None, None
+        else:
+            return upper_lift, lower_lift
+
     def _update_base(self, exchange_floor: str, complete: bool = False) -> None:
         """更新生成的基函数"""
-        if time < self.update_earliest_time:
-            print("时间不合法！")
-            return
-        elif len(self.available_sche_id_pool) < 2:
+        global time
+        if len(self.available_sche_id_pool) < 2:
             print("没有可用的update电梯！")
             return
-        for key in self.earliest_sche_time.keys():
-            if self.earliest_sche_time[key] < time + 7.999:
-                self.earliest_sche_time[key] = time + 8.001
         if complete:
             while len(self.available_sche_id_pool) > 1:
-                upper_lift = self.available_sche_id_pool.pop(0)
-                lower_lift = self.available_sche_id_pool.pop(0)
+                upper_lift, lower_lift = self._upper_lower()
+                if upper_lift is None:
+                    return
                 self._remove_updated_sche(upper_lift)
                 self._remove_updated_sche(lower_lift)
                 self._atomic_update_gen(upper_lift, lower_lift, exchange_floor)
         else:
-            upper_lift = self.available_sche_id_pool.pop(0)
-            lower_lift = self.available_sche_id_pool.pop(0)
+            upper_lift, lower_lift = self._upper_lower()
+            if upper_lift is None:
+                return
             self._remove_updated_sche(upper_lift)
             self._remove_updated_sche(lower_lift)
             self._atomic_update_gen(upper_lift, lower_lift, exchange_floor)
