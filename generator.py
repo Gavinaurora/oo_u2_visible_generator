@@ -209,7 +209,7 @@ class Generator:
         """将所有可能的调度请求生成（极端场景）"""
         global time
         chance_max = self.parameter['SCHE_SUMMON_CHANCE_MAX']
-        for selected_id in self.lift_id_pool:
+        for selected_id in self.available_sche_id_pool:
             for _ in range(chance_max):
                 to_floor = random.choice(self.sche_floor_name)
                 speed = random.choice(self.speed_pool)
